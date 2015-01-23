@@ -5,8 +5,8 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start daemon at boot time
-# Description:       Enable service provided by daemon.
+# Short-Description: Start $daemon at boot time
+# Description:       Enable service provided by $daemon.
 ### END INIT INFO
 
 dir=""
@@ -17,6 +17,8 @@ name=`basename $0`
 pid_file="/var/run/$name.pid"
 stdout_log="/var/log/$name.log"
 stderr_log="/var/log/$name.err"
+
+. /lib/lsb/init-functions
 
 get_pid() {
     cat "$pid_file"
@@ -29,59 +31,57 @@ is_running() {
 case "$1" in
     start)
     if is_running; then
-        echo "Already started"
+        log_action_msg "Already started"
     else
-        echo "Starting $name"
-        cd "$dir"
-        sudo -u "$user" $cmd >> "$stdout_log" 2>> "$stderr_log" &
-        echo $! > "$pid_file"
-        if ! is_running; then
-            echo "Unable to start, see $stdout_log and $stderr_log"
-            exit 1
-        fi
+        log_daemon_msg "Starting $name"
+	start-stop-daemon -p $pid_file -m -b -d $dir -x $dir$cmd --start
+	log_end_msg $?
     fi
     ;;
     stop)
     if is_running; then
-        echo -n "Stopping $name.."
-        kill `get_pid`
-        for i in {1..10}
-        do
-            if ! is_running; then
-                break
-            fi
+        log_daemon_msg "Stopping $name.."
+	start-stop-daemon -p $pid_file --stop
+        #kill `get_pid`
+        #for i in {1..10}
+        #do
+        #    if ! is_running; then
+        #        break
+        #    fi
 
-            echo -n "."
-            sleep 1
-        done
-        echo
+        #    echo -n "."
+        #    sleep 1
+        #done
+        #echo
 
-        if is_running; then
-            echo "Not stopped; may still be shutting down or shutdown may have failed"
-            exit 1
-        else
-            echo "Stopped"
-            if [ -f "$pid_file" ]; then
-                rm "$pid_file"
-            fi
-        fi
+        #if is_running; then
+        #    echo "Not stopped; may still be shutting down or shutdown may have failed"
+        #    exit 1
+        #else
+        #    echo "Stopped"
+        #    if [ -f "$pid_file" ]; then
+        #        rm "$pid_file"
+        #    fi
+        #fi
+	log_end_msg $?
     else
-        echo "Not running"
+        log_warning_msg "Not running"
+	log_end_msg 1
     fi
     ;;
     restart)
     $0 stop
     if is_running; then
-        echo "Unable to stop, will not attempt to start"
+        log_warning_msg "Unable to stop, will not attempt to start"
         exit 1
     fi
     $0 start
     ;;
     status)
     if is_running; then
-        echo "Running"
+        log_action_msg "Running"
     else
-        echo "Stopped"
+        log_action_msg "Stopped"
         exit 1
     fi
     ;;
